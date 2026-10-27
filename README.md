@@ -39,3 +39,10 @@ cd apps/web && npm install && npm run dev     # http://localhost:3000
 ## API
 Membre : `GET /me`, `GET /cycle`, `PATCH /statuses/:id`, `POST /push`, `GET /auth/join/:token` (public).
 Admin : `GET /admin/overview`, `GET|POST /admin/members`, `POST /admin/cycles`, `POST /admin/remind`, `POST /admin/assignments`.
+
+## Fonctions ajoutées
+
+- Admin : modifier un membre (nom, téléphone, admin) et ses juz, marquer un juz terminé pour quelqu'un, réinitialiser un juz ou toute la semaine.
+- Boutons instantanés (mise à jour locale puis envoi en arrière-plan).
+- Hors ligne : l'app s'ouvre sans réseau, les actions sont gardées et envoyées au retour de la connexion.
+- Thème Touba : mosquée dont les fenêtres s'allument avec l'avancement, messages et confettis.

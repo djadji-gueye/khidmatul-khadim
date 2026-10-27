@@ -26,4 +26,7 @@ export class AdminController {
   @Post("cycles") openCycle(@Body() b: any) { return this.s.openCycle(b.message); }
   @Post("remind") remind(@Body() b: any) { return this.s.remind(b.message); }
   @Post("assignments") assign(@Body() b: any) { return this.s.assign(Number(b.juz), b.memberId); }
+  @Patch("members/:id") editMember(@Param("id") id: string, @Body() b: any) { return this.s.editMember(id, b); }
+  @Patch("statuses/:id") adminStatus(@Param("id") id: string, @Body() b: any) { return this.s.adminSetStatus(id, b.state, b.excuse); }
+  @Post("reset") reset() { return this.s.resetCycle(); }
 }

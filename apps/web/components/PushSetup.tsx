@@ -11,7 +11,6 @@ export default function PushSetup() {
   const [install, setInstall] = useState<any>(null);
 
   useEffect(() => {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
     const onInstall = (e: Event) => { e.preventDefault(); setInstall(e); };
     window.addEventListener("beforeinstallprompt", onInstall);
     const ios = /iphone|ipad/i.test(navigator.userAgent);
