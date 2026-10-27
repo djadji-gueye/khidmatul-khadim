@@ -7,7 +7,7 @@ import PushSetup from "./PushSetup";
 import { confetti, toast } from "./Fx";
 import { call } from "@/lib/client";
 import { fmt } from "@/lib/cycle";
-import { prefetchJuz } from "@/lib/quran";
+import { Mark, markKey, prefetchJuz, readMark } from "@/lib/quran";
 
 type Row = { id: string; juz: number; state: string; excuse: string | null };
 type Data = { cycle: { message: string; deadline: string } | null; open: boolean; cells: string[]; mine: Row[] };
@@ -32,7 +32,7 @@ const apply = (d: Data, op: Op): Data => {
   };
 };
 
-function JuzCard({ r, act }: { r: Row; act: (r: Row, state: string, excuse?: string) => void }) {
+function JuzCard({ r, act, mark }: { r: Row; act: (r: Row, state: string, excuse?: string) => void; mark?: Mark }) {
   const [ex, setEx] = useState(r.excuse || "");
   return (
     <div className={`card juz ${r.state}`}>
@@ -41,7 +41,13 @@ function JuzCard({ r, act }: { r: Row; act: (r: Row, state: string, excuse?: str
         <div className="grow"><strong>Juz {r.juz}</strong><br /><span className="pill">{LABEL[r.state]}</span></div>
       </div>
       {r.excuse && <small>Motif : {r.excuse}</small>}
-      <Link className="btn read" href={`/lire/${r.juz}?s=${r.id}`}>Lire le juz {r.juz}</Link>
+      {mark && r.state !== "DONE" && (
+        <div className="mk">
+          <small>Marqué : sourate {mark.s}, verset {mark.a} · {Math.round(((mark.i + 1) / mark.n) * 100)} %</small>
+          <div className="bar"><i style={{ width: `${((mark.i + 1) / mark.n) * 100}%` }} /></div>
+        </div>
+      )}
+      <Link className="btn read" href={`/lire/${r.juz}?s=${r.id}`}>{mark && r.state !== "DONE" ? "Reprendre la lecture" : `Lire le juz ${r.juz}`}</Link>
       {r.state === "DONE" ? (
         <button className="btn ghost" onClick={() => act(r, "PENDING")}>Annuler</button>
       ) : (
@@ -63,6 +69,7 @@ export default function Board({ name, initial, at }: { name: string; initial: Da
   const [queue, setQueue] = useState<Op[]>([]);
   const [online, setOnline] = useState(true);
   const [now, setNow] = useState(at);
+  const [marks, setMarks] = useState<Record<number, Mark>>({});
   const dr = useRef<Data | null>(initial);
   const q = useRef<Op[]>([]);
   const busy = useRef(false);
@@ -123,6 +130,8 @@ export default function Board({ name, initial, at }: { name: string; initial: Da
     q.current = [...q.current.filter((o) => o.id !== r.id), op];
     setQueue(q.current); write(QKEY, q.current);
     if (state === "DONE") {
+      localStorage.removeItem(markKey(r.juz));
+      setMarks((m) => { const n = { ...m }; delete n[r.juz]; return n; });
       navigator.vibrate?.(30);
       if (next.cells.every((c) => c === "DONE")) { confetti(); toast("Machallah ! Les 30 juz sont terminés. Barkelou Serigne Touba"); }
       else if (next.mine.every((x) => x.state !== "PENDING")) { confetti(); toast("Tous tes juz sont terminés, jërëjëf !"); }
@@ -138,6 +147,14 @@ export default function Board({ name, initial, at }: { name: string; initial: Da
     const t = setTimeout(() => prefetchJuz(mineKey.split(",").map(Number)), 2000);
     return () => clearTimeout(t);
   }, [mineKey]);
+
+  // Marqueurs de lecture (« je m'arrête ici ») de cet appareil
+  const idsKey = (data?.mine ?? []).map((r) => r.id).join(",");
+  useEffect(() => {
+    const m: Record<number, Mark> = {};
+    for (const r of data?.mine ?? []) { const x = readMark(r.juz, r.id); if (x) m[r.juz] = x; }
+    setMarks(m);
+  }, [idsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cells = data?.cells ?? Array(30).fill("NONE");
   const rows = data?.mine ?? [];
@@ -165,7 +182,7 @@ export default function Board({ name, initial, at }: { name: string; initial: Da
       </section>
 
       {open && rows.length === 0 && <div className="card mute">Aucun juz ne t'est assigné cette semaine.</div>}
-      {open && rows.map((r) => <JuzCard key={r.id + r.state} r={r} act={act} />)}
+      {open && rows.map((r) => <JuzCard key={r.id + r.state} r={r} act={act} mark={marks[r.juz]} />)}
       <div className="card"><PushSetup /></div>
     </main>
   );
