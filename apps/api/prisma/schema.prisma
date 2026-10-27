@@ -1,0 +1,48 @@
+generator client { provider = "prisma-client-js" }
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Member {
+  id          String       @id @default(cuid())
+  name        String
+  phone       String?
+  inviteToken String       @unique @default(cuid())
+  pushSub     String?
+  isAdmin     Boolean      @default(false)
+  assignments Assignment[]
+}
+
+// Fixe : un juz (1 à 30) appartient à un membre
+model Assignment {
+  id       String   @id @default(cuid())
+  juz      Int      @unique
+  memberId String
+  member   Member   @relation(fields: [memberId], references: [id])
+  statuses Status[]
+}
+
+model Cycle {
+  id       String    @id @default(cuid())
+  openedAt DateTime  @default(now())
+  deadline DateTime
+  message  String?
+  closedAt DateTime?
+  statuses Status[]
+}
+
+model Status {
+  id           String     @id @default(cuid())
+  cycleId      String
+  assignmentId String
+  state        String     @default("PENDING") // PENDING | DONE | EXCUSED
+  excuse       String?
+  doneAt       DateTime?
+  cycle        Cycle      @relation(fields: [cycleId], references: [id])
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+
+  @@unique([cycleId, assignmentId])
+}

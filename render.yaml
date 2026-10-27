@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: kk-api
+    runtime: node
+    rootDir: apps/api
+    plan: free
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    startCommand: npx prisma db push --skip-generate && node dist/main.js
+    healthCheckPath: /health
+    envVars:
+      - { key: DATABASE_URL, sync: false }
+      - { key: DIRECT_URL, sync: false }
+      - { key: VAPID_PUBLIC_KEY, sync: false }
+      - { key: VAPID_PRIVATE_KEY, sync: false }
+      - { key: VAPID_CONTACT, sync: false }
