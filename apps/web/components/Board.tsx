@@ -4,6 +4,7 @@ import Link from "next/link";
 import Ring from "./Ring";
 import Touba from "./Touba";
 import PushSetup from "./PushSetup";
+import InstallBanner from "./InstallBanner";
 import { confetti, toast } from "./Fx";
 import { call } from "@/lib/client";
 import { fmt } from "@/lib/cycle";
@@ -166,6 +167,7 @@ export default function Board({ name, initial, at }: { name: string; initial: Da
       <div className="top"><div><small>Salam</small><h1>{name}</h1></div><span className="ar" lang="ar" dir="rtl">خدمة الخديم</span></div>
       {!online && <div className="banner">Hors ligne : tes changements sont gardés sur ton téléphone et partiront dès le retour du réseau.{queue.length > 0 && ` (${queue.length} en attente)`}</div>}
       {online && queue.length > 0 && <div className="banner">Envoi en cours…</div>}
+      <InstallBanner />
 
       <section className="hero">
         <Ring cells={open ? cells : cells.map(() => "NONE")} mine={open ? rows.map((r) => r.juz) : []}>

@@ -8,18 +8,14 @@ const toBytes = (b64: string) => {
 
 export default function PushSetup() {
   const [state, setState] = useState<"idle" | "on" | "denied" | "ios" | "unsupported">("idle");
-  const [install, setInstall] = useState<any>(null);
 
   useEffect(() => {
-    const onInstall = (e: Event) => { e.preventDefault(); setInstall(e); };
-    window.addEventListener("beforeinstallprompt", onInstall);
     const ios = /iphone|ipad/i.test(navigator.userAgent);
     const standalone = (navigator as any).standalone || matchMedia("(display-mode: standalone)").matches;
     if (ios && !standalone) setState("ios");
     else if (!("PushManager" in window)) setState("unsupported");
     else if (Notification.permission === "granted") setState("on");
     else if (Notification.permission === "denied") setState("denied");
-    return () => window.removeEventListener("beforeinstallprompt", onInstall);
   }, []);
 
   async function enable() {
@@ -32,7 +28,6 @@ export default function PushSetup() {
 
   return (
     <>
-      {install && <button className="btn ghost" onClick={async () => { install.prompt(); await install.userChoice; setInstall(null); }}>Installer l'app sur l'écran d'accueil</button>}
       {state === "idle" && <button className="btn" onClick={enable}>Activer les notifications</button>}
       {state === "on" && <small className="mute">Notifications activées sur cet appareil.</small>}
       {state === "ios" && <small className="mute">Pour les notifications : bouton Partager, « Sur l'écran d'accueil », puis ouvre l'app depuis l'icône.</small>}
