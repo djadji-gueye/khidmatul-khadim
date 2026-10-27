@@ -34,7 +34,7 @@ export default function AdminBoard({ initial, base }: { initial: Ov; base: strin
   async function setRow(r: Row, state: string) {
     if (offline()) return;
     setOv((o) => ({ ...o, rows: o.rows.map((x) => (x.id === r.id ? { ...x, state, excuse: null } : x)) }));
-    if (state === "DONE") { navigator.vibrate?.(30); toast(`Juz ${r.assignment.juz} validé pour ${r.assignment.member.name}`); }
+    if (state === "DONE") { navigator.vibrate?.(30); toast(`Juz ${r.assignment.juz} validé pour ${r.assignment.member?.name ?? "—"}`); }
     else toast(`Juz ${r.assignment.juz} remis en attente`);
     const res = await call("PATCH", `/admin/statuses/${r.id}`, { state });
     if (!res.ok) { toast(res.data?.message || "Échec, réessaie", "err"); setOv((o) => ({ ...o, rows: o.rows.map((x) => (x.id === r.id ? r : x)) })); }
@@ -66,7 +66,7 @@ export default function AdminBoard({ initial, base }: { initial: Ov; base: strin
   const { rows, cycle, open } = ov;
   const n = (s: string) => rows.filter((r) => r.state === s).length;
   const cells = Array.from({ length: 30 }, (_, i) => rows.find((r) => r.assignment.juz === i + 1)?.state || "NONE");
-  const pending = Array.from(new Map(rows.filter((r) => r.state === "PENDING").map((r) => [r.assignment.member.id, r.assignment.member])).values());
+  const pending = Array.from(new Map(rows.filter((r) => r.state === "PENDING" && r.assignment.member).map((r) => [r.assignment.member!.id, r.assignment.member!])).values());
   const remindText = `Rappel : pense à signaler ta lecture avant dimanche 18h. ${base}`;
 
   return (
@@ -99,7 +99,7 @@ export default function AdminBoard({ initial, base }: { initial: Ov; base: strin
         {rows.map((r) => (
           <div key={r.id} className={`li ${r.state}`}>
             <i className="dot" /><strong style={{ width: 56 }}>Juz {r.assignment.juz}</strong>
-            <span style={{ flex: 1 }}>{r.assignment.member.name}{r.excuse && <small> · {r.excuse}</small>}</span>
+            <span style={{ flex: 1 }}>{r.assignment.member?.name ?? "Sans membre"}{r.excuse && <small> · {r.excuse}</small>}</span>
             <span className="pill">{LABEL[r.state]}</span>
             {open && (
               <div className="acts">

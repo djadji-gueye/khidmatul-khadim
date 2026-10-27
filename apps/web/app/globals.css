@@ -69,4 +69,22 @@ url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' hei
 .juzgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .chip{font:600 .95rem Figtree,sans-serif;min-height:44px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--text);cursor:pointer}
 .chip.mine{background:var(--leaf);border-color:var(--leaf);color:#fff}.chip.other{opacity:.55}.chip.free{border:2px dashed var(--brass)}
+.card.off{opacity:.7;border-style:dashed}
+.btn.danger{border-color:#B3402F;color:#B3402F}
+.btn.read{background:var(--brass);border-color:var(--brass);color:#fff;text-decoration:none}
+/* Lecteur */
+body:has(.reader) .tabs{display:none}
+.reader{padding-bottom:calc(48px + env(safe-area-inset-bottom))}
+.rd-bar{position:sticky;top:0;z-index:5;margin:-16px -16px 8px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.rd-bar strong{flex:1;text-align:center;font-size:1.1rem}
+.rd-back{font-weight:600;text-decoration:none}
+.rd-size{display:flex;gap:6px}.rd-size button{font:700 .95rem Figtree,sans-serif;min-width:44px;min-height:40px;border-radius:12px;border:1.5px solid var(--leaf);background:transparent;color:var(--leaf);cursor:pointer}
+.rd-prog{position:absolute;left:0;bottom:-1px;height:3px;background:var(--brass);transition:width .1s}
+.rd-ar{font-family:"Amiri Quran",Amiri,"Noto Naskh Arabic",serif}
+.rd-text{font-size:var(--fs);line-height:2.35;text-align:justify;margin:0 0 8px}
+.vn{display:inline-grid;place-content:center;min-width:1.55em;height:1.55em;margin:0 .3em;border:1.5px solid var(--brass);border-radius:50%;font-size:.5em;line-height:1;color:var(--brass)}
+.sura{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:26px 0 10px;padding:10px 16px;border:2px solid var(--brass);border-radius:16px;background:color-mix(in srgb,var(--brass) 10%,var(--card))}
+.sura .rd-ar{font-size:1.6rem}.sura small{text-align:right}
+.bism{text-align:center;font-size:calc(var(--fs) * 1.05);margin:8px 0 10px}
+.rd-end{display:grid;gap:10px;margin-top:26px;text-align:center}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

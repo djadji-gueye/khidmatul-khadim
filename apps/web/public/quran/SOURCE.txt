@@ -1,0 +1,2 @@
+Texte coranique (Uthmani) : The Noble Qur'an Encyclopedia (quranenc.com), via le paquet npm quran-json de Risan Bagja Pradana (https://github.com/risan/quran-json), licence CC BY-SA 4.0.
+Découpage en 30 juz selon la division classique (Hafs), vérifié : 6236 versets.

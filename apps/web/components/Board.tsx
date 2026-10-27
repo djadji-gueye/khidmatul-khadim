@@ -1,11 +1,13 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import Ring from "./Ring";
 import Touba from "./Touba";
 import PushSetup from "./PushSetup";
 import { confetti, toast } from "./Fx";
 import { call } from "@/lib/client";
 import { fmt } from "@/lib/cycle";
+import { prefetchJuz } from "@/lib/quran";
 
 type Row = { id: string; juz: number; state: string; excuse: string | null };
 type Data = { cycle: { message: string; deadline: string } | null; open: boolean; cells: string[]; mine: Row[] };
@@ -39,6 +41,7 @@ function JuzCard({ r, act }: { r: Row; act: (r: Row, state: string, excuse?: str
         <div className="grow"><strong>Juz {r.juz}</strong><br /><span className="pill">{LABEL[r.state]}</span></div>
       </div>
       {r.excuse && <small>Motif : {r.excuse}</small>}
+      <Link className="btn read" href={`/lire/${r.juz}?s=${r.id}`}>Lire le juz {r.juz}</Link>
       {r.state === "DONE" ? (
         <button className="btn ghost" onClick={() => act(r, "PENDING")}>Annuler</button>
       ) : (
@@ -127,6 +130,14 @@ export default function Board({ name, initial, at }: { name: string; initial: Da
     }
     sync();
   }
+
+  // Garde le texte de mes juz sur le téléphone pour lire sans réseau
+  const mineKey = (data?.mine ?? []).map((r) => r.juz).join(",");
+  useEffect(() => {
+    if (!mineKey || !navigator.onLine) return;
+    const t = setTimeout(() => prefetchJuz(mineKey.split(",").map(Number)), 2000);
+    return () => clearTimeout(t);
+  }, [mineKey]);
 
   const cells = data?.cells ?? Array(30).fill("NONE");
   const rows = data?.mine ?? [];

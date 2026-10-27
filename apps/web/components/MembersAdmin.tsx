@@ -5,7 +5,7 @@ import { toast } from "./Fx";
 import { call } from "@/lib/client";
 import { wa } from "@/lib/wa";
 
-type M = { id: string; name: string; phone: string | null; isAdmin: boolean; inviteToken: string; assignments: { juz: number }[] };
+type M = { id: string; name: string; phone: string | null; isAdmin: boolean; active: boolean; inviteToken: string; assignments: { juz: number }[] };
 const JUZ = Array.from({ length: 30 }, (_, i) => i + 1);
 const byName = (a: M, b: M) => a.name.localeCompare(b.name, "fr");
 
@@ -14,8 +14,9 @@ export default function MembersAdmin({ initial, base }: { initial: M[]; base: st
   const [form, setForm] = useState({ name: "", phone: "", isAdmin: false });
   const [adding, setAdding] = useState(false);
 
+  const actifs = ms.filter((m) => m.active), inactifs = ms.filter((m) => !m.active);
   const owner = new Map<number, M>();
-  ms.forEach((m) => m.assignments.forEach((a) => owner.set(a.juz, m)));
+  actifs.forEach((m) => m.assignments.forEach((a) => owner.set(a.juz, m)));
   const free = JUZ.filter((j) => !owner.has(j));
 
   const offline = () => { if (navigator.onLine) return false; toast("Hors ligne : reconnecte-toi pour modifier", "err"); return true; };
@@ -49,6 +50,22 @@ export default function MembersAdmin({ initial, base }: { initial: M[]; base: st
     if (r.ok) toast(`Juz ${juz} → ${m.name}`); else { toast("Échec, réessaie", "err"); reload(); }
   }
 
+  // Désactiver (rien n'est supprimé) : ses juz passent à un autre membre ou restent sans membre
+  async function deactivate(m: M, giveTo: string) {
+    if (offline() || !confirm(`Désactiver ${m.name} ? Il ne pourra plus se connecter.`)) return;
+    const juz = m.assignments.map((a) => a.juz);
+    setMs((l) => l.map((x) => (x.id === m.id ? { ...x, active: false, assignments: [] } : x.id === giveTo ? { ...x, assignments: [...x.assignments, ...juz.map((j) => ({ juz: j }))] } : x)));
+    const r = await call("POST", `/admin/members/${m.id}/deactivate`, { giveTo: giveTo || undefined });
+    if (r.ok) toast(`${m.name} désactivé`); else { toast(r.data?.message || "Échec, réessaie", "err"); reload(); }
+  }
+
+  async function reactivate(m: M) {
+    if (offline()) return;
+    setMs((l) => l.map((x) => (x.id === m.id ? { ...x, active: true } : x)));
+    const r = await call("POST", `/admin/members/${m.id}/reactivate`);
+    if (r.ok) toast(`${m.name} réactivé`); else { toast("Échec, réessaie", "err"); reload(); }
+  }
+
   return (
     <main>
       <div className="top"><h1>Membres</h1><span className="ar" lang="ar" dir="rtl">خدمة الخديم</span></div>
@@ -62,14 +79,25 @@ export default function MembersAdmin({ initial, base }: { initial: M[]; base: st
         </form>
         {free.length > 0 && <p className="mute">Juz sans membre : {free.join(", ")}. Ouvre un membre, « Modifier », puis touche le juz.</p>}
       </section>
-      {ms.map((m) => <MemberCard key={m.id} m={m} base={base} owner={owner} save={save} take={take} />)}
+      {actifs.map((m) => <MemberCard key={m.id} m={m} others={actifs.filter((x) => x.id !== m.id)} base={base} owner={owner} save={save} take={take} deactivate={deactivate} />)}
+      {inactifs.length > 0 && (
+        <>
+          <h2 style={{ margin: "22px 4px 0" }}>Désactivés</h2>
+          {inactifs.map((m) => (
+            <div key={m.id} className="card off">
+              <div className="row"><strong className="grow">{m.name}</strong><button className="mini" onClick={() => reactivate(m)}>Réactiver</button></div>
+            </div>
+          ))}
+        </>
+      )}
     </main>
   );
 }
 
-function MemberCard({ m, base, owner, save, take }: { m: M; base: string; owner: Map<number, M>; save: (m: M, p: { name: string; phone: string; isAdmin: boolean }) => Promise<boolean>; take: (m: M, j: number) => void }) {
+function MemberCard({ m, others, base, owner, save, take, deactivate }: { m: M; others: M[]; base: string; owner: Map<number, M>; save: (m: M, p: { name: string; phone: string; isAdmin: boolean }) => Promise<boolean>; take: (m: M, j: number) => void; deactivate: (m: M, giveTo: string) => void }) {
   const [edit, setEdit] = useState(false);
   const [f, setF] = useState({ name: m.name, phone: m.phone || "", isAdmin: m.isAdmin });
+  const [give, setGive] = useState("");
   const link = `${base}/join/${m.inviteToken}`;
   const mine = m.assignments.map((a) => a.juz).sort((a, b) => a - b);
 
@@ -95,6 +123,12 @@ function MemberCard({ m, base, owner, save, take }: { m: M; base: string; owner:
               return <button key={j} type="button" className={`chip ${cls}`} title={o ? o.name : "Sans membre"} onClick={() => take(m, j)}>{j}</button>;
             })}
           </div>
+          <h2 style={{ marginTop: 6 }}>Désactiver</h2>
+          <select value={give} onChange={(e) => setGive(e.target.value)}>
+            <option value="">Laisser ses juz sans membre</option>
+            {others.map((x) => <option key={x.id} value={x.id}>Donner ses juz à {x.name}</option>)}
+          </select>
+          <button className="btn ghost danger" onClick={() => deactivate(m, give)}>Désactiver {m.name}</button>
         </div>
       )}
 

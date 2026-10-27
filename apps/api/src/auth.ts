@@ -9,7 +9,7 @@ export class AuthGuard implements CanActivate {
     const req = ctx.switchToHttp().getRequest();
     const t = String(req.headers.authorization || "").replace(/^Bearer /, "");
     const m = t ? await this.db.member.findUnique({ where: { inviteToken: t } }) : null;
-    if (!m) throw new UnauthorizedException();
+    if (!m || !m.active) throw new UnauthorizedException();
     req.member = m;
     return true;
   }

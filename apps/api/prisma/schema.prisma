@@ -15,6 +15,7 @@ model Member {
   inviteToken String       @unique @default(cuid())
   pushSub     String?
   isAdmin     Boolean      @default(false)
+  active      Boolean      @default(true)
   assignments Assignment[]
 }
 
@@ -22,8 +23,8 @@ model Member {
 model Assignment {
   id       String   @id @default(cuid())
   juz      Int      @unique
-  memberId String
-  member   Member   @relation(fields: [memberId], references: [id])
+  memberId String?
+  member   Member?  @relation(fields: [memberId], references: [id])
   statuses Status[]
 }
 

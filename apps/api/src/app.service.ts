@@ -16,7 +16,8 @@ export class AppService {
   constructor(private db: PrismaService, private push: PushService) {}
 
   async join(token: string) {
-    if (!(await this.db.member.findUnique({ where: { inviteToken: token } }))) throw new NotFoundException();
+    const m = await this.db.member.findUnique({ where: { inviteToken: token } });
+    if (!m || !m.active) throw new NotFoundException();
     return { ok: true };
   }
 
@@ -99,7 +100,7 @@ export class AppService {
 
   members() {
     return this.db.member.findMany({
-      select: { id: true, name: true, phone: true, isAdmin: true, inviteToken: true, assignments: { select: { juz: true } } },
+      select: { id: true, name: true, phone: true, isAdmin: true, active: true, inviteToken: true, assignments: { select: { juz: true } } },
       orderBy: { name: "asc" },
     });
   }
@@ -108,7 +109,7 @@ export class AppService {
     if (!name?.trim()) throw new BadRequestException("Nom requis");
     const member = await this.db.member.create({
       data: { name: name.trim(), phone: phone?.trim() || null, isAdmin: !!isAdmin },
-      select: { id: true, name: true, phone: true, isAdmin: true, inviteToken: true, assignments: { select: { juz: true } } },
+      select: { id: true, name: true, phone: true, isAdmin: true, active: true, inviteToken: true, assignments: { select: { juz: true } } },
     });
     return { ok: true, member };
   }
@@ -122,7 +123,7 @@ export class AppService {
     if (b.phone !== undefined) data.phone = String(b.phone).trim() || null;
     if (b.isAdmin !== undefined) {
       data.isAdmin = !!b.isAdmin;
-      if (!data.isAdmin && !(await this.db.member.count({ where: { isAdmin: true, id: { not: id } } }))) throw new BadRequestException("Il faut au moins un admin");
+      if (!data.isAdmin && !(await this.db.member.count({ where: { isAdmin: true, active: true, id: { not: id } } }))) throw new BadRequestException("Il faut au moins un admin");
     }
     if (!(await this.db.member.findUnique({ where: { id } }))) throw new NotFoundException();
     await this.db.member.update({ where: { id }, data });
@@ -133,22 +134,51 @@ export class AppService {
     const text = message?.trim() || "La semaine est ouverte, bonne lecture.";
     await this.db.cycle.updateMany({ where: { closedAt: null }, data: { closedAt: new Date() } });
     const cycle = await this.db.cycle.create({ data: { message: text, deadline: nextDeadline() } });
-    const as = await this.db.assignment.findMany();
+    const as = await this.db.assignment.findMany({ where: { memberId: { not: null } } });
     await this.db.status.createMany({ data: as.map((a) => ({ cycleId: cycle.id, assignmentId: a.id })) });
-    const sent = await this.push.notify(await this.db.member.findMany(), "Khidmatul Khadim", text);
+    const sent = await this.push.notify(await this.db.member.findMany({ where: { active: true } }), "Khidmatul Khadim", text);
     return { ok: true, sent };
   }
 
   async remind(message?: string) {
     const c = await this.openNow();
     if (!c) return { ok: true, sent: 0 };
-    const pending = await this.db.member.findMany({ where: { assignments: { some: { statuses: { some: { cycleId: c.id, state: "PENDING" } } } } } });
+    const pending = await this.db.member.findMany({ where: { active: true, assignments: { some: { statuses: { some: { cycleId: c.id, state: "PENDING" } } } } } });
     const sent = await this.push.notify(pending, "Rappel", message?.trim() || "Pense à signaler ta lecture avant dimanche 18h.");
     return { ok: true, sent };
   }
 
+  // Désactiver = le membre ne peut plus se connecter ni être notifié (rien n'est supprimé).
+  // Ses juz passent à `giveTo`, ou restent sans membre.
+  async deactivateMember(actorId: string, id: string, giveTo?: string) {
+    if (id === actorId) throw new BadRequestException("Tu ne peux pas te désactiver toi-même");
+    const m = await this.db.member.findUnique({ where: { id }, include: { assignments: true } });
+    if (!m) throw new NotFoundException();
+    if (m.isAdmin && !(await this.db.member.count({ where: { isAdmin: true, active: true, id: { not: id } } }))) throw new BadRequestException("Il faut au moins un admin actif");
+    if (giveTo) {
+      const t = await this.db.member.findUnique({ where: { id: giveTo } });
+      if (!t || !t.active || t.id === id) throw new BadRequestException("Destinataire invalide");
+      for (const a of m.assignments) await this.assign(a.juz, giveTo);
+    } else if (m.assignments.length) {
+      const ids = m.assignments.map((a) => a.id);
+      const c = await this.openNow();
+      if (c) await this.db.status.deleteMany({ where: { cycleId: c.id, assignmentId: { in: ids } } });
+      await this.db.assignment.updateMany({ where: { id: { in: ids } }, data: { memberId: null } });
+    }
+    await this.db.member.update({ where: { id }, data: { active: false, pushSub: null } });
+    return { ok: true };
+  }
+
+  async reactivateMember(id: string) {
+    if (!(await this.db.member.findUnique({ where: { id } }))) throw new NotFoundException();
+    await this.db.member.update({ where: { id }, data: { active: true } });
+    return { ok: true };
+  }
+
   async assign(juz: number, memberId: string) {
     if (!(juz >= 1 && juz <= 30) || !memberId) throw new BadRequestException();
+    const target = await this.db.member.findUnique({ where: { id: memberId } });
+    if (!target || !target.active) throw new BadRequestException("Membre introuvable ou désactivé");
     const prev = await this.db.assignment.findUnique({ where: { juz } });
     const a = await this.db.assignment.upsert({ where: { juz }, update: { memberId }, create: { juz, memberId } });
     const c = await this.openNow();

@@ -1,5 +1,5 @@
 // Hors ligne : pages en réseau d'abord (copie gardée), fichiers statiques en cache.
-const SHELL = "kk-shell-v3", STATIC = "kk-static-v3";
+const SHELL = "kk-shell-v4", STATIC = "kk-static-v4";
 const OFFLINE = '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font:16px system-ui;background:#0C2E24;color:#fff;display:grid;place-content:center;height:100vh;text-align:center;padding:24px"><h1>Hors ligne</h1><p>Ouvre l\'app une fois avec internet pour l\'utiliser ensuite sans réseau.</p>';
 
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(STATIC).then((c) => c.addAll(["/icon-192.png", "/icon-512.png"]))); self.skipWaiting(); });
@@ -7,7 +7,7 @@ self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then((k) =>
 
 async function page(req) {
   const cache = await caches.open(SHELL);
-  const hit = await cache.match(req);
+  const hit = await cache.match(req, { ignoreSearch: new URL(req.url).pathname.startsWith("/lire/") });
   const net = fetch(req).then((res) => { if (res.ok && !res.redirected) cache.put(req, res.clone()); return res; });
   net.catch(() => {});
   try { return await Promise.race([net, new Promise((_, no) => setTimeout(no, hit ? 2500 : 20000))]); }
@@ -29,7 +29,7 @@ self.addEventListener("fetch", (e) => {
   if (u.origin === location.origin) {
     if (u.pathname.startsWith("/api/") || u.pathname.startsWith("/join/")) return;
     if (r.mode === "navigate") return e.respondWith(page(r));
-    if (u.pathname.startsWith("/_next/static/") || /\/icon-/.test(u.pathname)) return e.respondWith(cacheFirst(r, STATIC));
+    if (u.pathname.startsWith("/_next/static/") || u.pathname.startsWith("/quran/") || /\/icon-/.test(u.pathname)) return e.respondWith(cacheFirst(r, STATIC));
   } else if (u.hostname === "fonts.googleapis.com" || u.hostname === "fonts.gstatic.com") {
     e.respondWith(cacheFirst(r, STATIC).catch(() => fetch(r)));
   }
